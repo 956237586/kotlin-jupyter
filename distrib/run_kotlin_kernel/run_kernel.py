@@ -84,7 +84,24 @@ def run_kernel_impl(connection_file: str, jar_args_file: str = None, executables
         ]
         if debug_port is not None:
             jar_args.append('-debugPort=' + str(debug_port))
-        subprocess.call([java] + jvm_args + ['-jar'] + debug_list + jar_args)
+        #for skykoma-agent-idea begin
+        skykoma_agent_idea = 'idea' in os.getenv('SKYKOMA_AGENT_TYPE', '')
+        if skykoma_agent_idea:
+            import requests
+            import time
+            skykoma_agent_server_api = os.getenv('SKYKOMA_AGENT_SERVER_API')
+            payload = json.dumps(jar_args[1:])
+            print('launch skykoma agent idea jupyter repl server, api: {}, args: {}'.format(skykoma_agent_server_api, payload))
+            headers = {"Content-Type": "application/json"}
+            response = requests.post(skykoma_agent_server_api, data=payload, headers=headers)
+            print('server reply code:{}, body: {}'.format(response.status_code, response.json()))
+            while True:
+                time.sleep(10000)  #avoid current process exit
+        else:
+            print([java] + jvm_args + ['-jar'] + debug_list + jar_args)  #for debug only
+            subprocess.call([java] + jvm_args + ['-jar'] + debug_list + jar_args)
+        # subprocess.call([java] + jvm_args + ['-jar'] + debug_list + jar_args)
+        #for skykoma-agent-idea end
 
 
 if __name__ == '__main__':
