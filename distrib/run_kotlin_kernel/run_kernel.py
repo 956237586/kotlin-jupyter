@@ -89,14 +89,27 @@ def run_kernel_impl(connection_file: str, jar_args_file: str = None, executables
         if skykoma_agent_idea:
             import requests
             import time
-            skykoma_agent_server_api = os.getenv('SKYKOMA_AGENT_SERVER_API')
+            skykoma_agent_server_api_base = os.getenv('SKYKOMA_AGENT_SERVER_API')
+            start_kernel_api = skykoma_agent_server_api_base + "/startJupyterKernel"
             payload = json.dumps(jar_args[1:])
-            print('launch skykoma agent idea jupyter repl server, api: {}, args: {}'.format(skykoma_agent_server_api, payload))
+            print('launch remote repl server, api: {}, args: {}'.format(start_kernel_api, payload))
             headers = {"Content-Type": "application/json"}
-            response = requests.post(skykoma_agent_server_api, data=payload, headers=headers)
-            print('server reply code:{}, body: {}'.format(response.status_code, response.json()))
-            while True:
-                time.sleep(10000)  #avoid current process exit
+            response = requests.post(start_kernel_api, data=payload, headers=headers)
+            response_body = response.json()
+            print('launch remote repl server reply code:{}, body: {}'.format(response.status_code, response_body))
+            if response_body['code'] == 'S00000':
+                while True:
+                    query_kernel_status_api = skykoma_agent_server_api_base + "/queryJupyterKernelStatus"
+                    payload = json.dumps({})
+                    headers = {"Content-Type": "application/json"}
+                    # print('query remote reql server, api: {}, payload: {}'.format(query_kernel_status_api, payload))
+                    response = requests.post(query_kernel_status_api, data=payload, headers=headers)
+                    response_body = response.json()
+                    if response_body['data'] == 'RUNNING':
+                        time.sleep(1)
+                    else:
+                        print('remote repl server stoppted, code:{}, body: {}'.format(response.status_code, response_body))
+                        break
         else:
             print([java] + jvm_args + ['-jar'] + debug_list + jar_args)  #for debug only
             subprocess.call([java] + jvm_args + ['-jar'] + debug_list + jar_args)
